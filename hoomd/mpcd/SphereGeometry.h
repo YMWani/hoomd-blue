@@ -2,12 +2,12 @@
 #ifndef MPCD_SPHERE_GEOMETRY_H_
 #define MPCD_SPHERE_GEOMETRY_H_
 
-#include <math.h>
-
 #include "BoundaryCondition.h"
 
 #include "hoomd/HOOMDMath.h"
 #include "hoomd/BoxDim.h"
+
+#include <cmath>
 
 #ifdef NVCC
 #define HOSTDEVICE __host__ __device__ inline
@@ -52,24 +52,27 @@ class __attribute__((visibility("default"))) SphereGeometry
             {
 
             /*
-             * Detect if particle has left the box, and try to avoid branching or absolute value calls. The sign used
-             * in calculations is 1 if the particle is out-of-bounds in the radial direction, 0 otherwise.
+             * Detect if particle has left the spherical confinement.
+             * comparison: 'r2 < R*R' used in the following calculations is equal to 0(FALSE) if the particle is outside
+             * a sphere of radius R, 1(TRUE) if inside.
              *
-             * We intentionally use > / < rather than >= / <= to make sure that spurious collisions do not get detected
-             * when a particle is reset to the boundary location. A particle landing exactly on the boundary from the bulk
-             * can be immediately reflected on the next streaming step, and so the motion is essentially equivalent up to
-             * an epsilon of difference in the channel width.
+             * We intentionally use > rather than >= in the comparison so that spurious collisions are not detected
+             * when a particle is reset to the spherical boundary. A particle landing exactly on the spherical boundary
+             * can be reflected in the next streaming step.
+             * TODO: Verify if the comparison can impact the dynamics incorrectly since we aim to have a dynamic spherical confinement.
              */
-            double r2 = pos.x*pos.x + pos.y*pos.y + pos.z*pos.z;
-            const char sign = (r2 > R*R);
+            Scalar r2 = dot(pos,pos);
             // exit immediately if no collision is found or particle is not moving normal (radial direction) to the wall
             // (since no new collision could have occurred if there is no normal motion)
             /*
             r(t) = sqrt(x**2 + y**2 + z**2)
             radial velocity, r_dot = (x*x_dot + y*y_dot + z*z_dot)/r(t)
+
+            define variable vr = r_dot*r(t) and check for radial motion, for computational efficiency.
             */
-            float vr = (pos.x*vel.x + pos.y*vel.y + pos.z*vel.z)/sqrt(r2);
-            if (sign == 0 || vr == Scalar(0))
+            Scalar vr = dot(pos,vel);
+            Scalar v2 = dot(vel,vel);
+            if (r2 < R*R || vr == Scalar(0) || v2 == Scalar(0))
                {
                dt = Scalar(0);
                return false;
@@ -94,12 +97,10 @@ class __attribute__((visibility("default"))) SphereGeometry
             * dx* = -r(t+del_t).v(t)/|v| +- sqrt((r(t+del_t).v(t))**2 - |r(t+del_t)|**2 + R**2)
             * consequently, dt = dx* / |v|
             */
-            double mod_v,r_dot_v_hat,dx_;
 
-            mod_v = sqrt(vel.x*vel.x + vel.y*vel.y + vel.z*vel.z);
-            r_dot_v_hat = (pos.x*vel.x + pos.y*vel.y + pos.z*vel.z)/mod_v;
+            Scalar r_dot_v_hat = vr/fast::sqrt(r2*v2);
 
-            dx_ = -r_dot_v_hat + sqrt(r_dot_v_hat*r_dot_v_hat - r2 + R*R);
+            const Scalar dx_ = -r_dot_v_hat + fast::sqrt(r_dot_v_hat*r_dot_v_hat - r2 + R*R);
             dt = dx_/mod_v;
 
             // backtrack the particle for time dt to get to point of contact
@@ -129,8 +130,7 @@ class __attribute__((visibility("default"))) SphereGeometry
          */
         HOSTDEVICE bool isOutside(const Scalar3& pos) const
             {
-            double r2 = pos.x*pos.x + pos.y*pos.y + pos.z*pos.z;
-            return (r2 > R*R);
+            return dot(pos,pos) > R*R;
             }
 
         //! Validate that the simulation box is large enough for the geometry
