@@ -68,7 +68,10 @@ class __attribute__((visibility("default"))) SphereGeometry
             r(t) = sqrt(x**2 + y**2 + z**2)
             radial velocity, r_dot = (x*x_dot + y*y_dot + z*z_dot)/r(t)
 
-            define variable vr = r_dot*r(t) and check for radial motion, for computational efficiency.
+            define variable vr = r_dot*r(t) to check for radial motion, for computational efficiency.
+
+            To avoid division by zero error later on (line 103), we exit immediately. (no collision could have occurred
+            if the particle speed is equal to zero)
             */
             Scalar vr = dot(pos,vel);
             Scalar v2 = dot(vel,vel);
@@ -109,17 +112,24 @@ class __attribute__((visibility("default"))) SphereGeometry
             pos.z -= vel.z*dt;
 
             // update velocity according to boundary conditions
-            // no-slip requires reflection of the tangential components
             if (m_bc == boundary::no_slip)
                 {
-                /*
-                Both the tangential and perpendicular components must be reflected.
-                */
+                // no-slip requires reflection of the tangential components.
+                // Radial component reflected since no penetration of the surface is necessary.
                 vel.x = -vel.x;
                 vel.y = -vel.y;
                 vel.z = -vel.z;
                 }
-
+            else if (m_bc == boundary::slip)
+                {
+                // tangential components of the velocity is unchanged.
+                // Radial component reflected since no penetration of the surface is necessary.
+                r2 = dot(pos,pos);
+                vr = dot(pos,vel);
+                vel.x -= 2.0*vr*pos.x/r2;
+                vel.y -= 2.0*vr*pos.y/r2;
+                vel.z -= 2.0*vr*pos.z/r2;
+                }
             return true;
             }
 
