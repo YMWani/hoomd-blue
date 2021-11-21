@@ -32,7 +32,7 @@ class __attribute__((visibility("default"))) SphereGeometry
          * \param R confinement radius
          * \param bc Boundary condition at the wall (slip or no-slip)
          */
-        HOSTDEVICE SlitGeometry(Scalar R, boundary bc)
+        HOSTDEVICE SphereGeometry(Scalar R, boundary bc)
             : m_R(R), m_bc(bc)
             { }
 
@@ -56,7 +56,7 @@ class __attribute__((visibility("default"))) SphereGeometry
              * comparison: 'r2 < R*R' used in the following calculations is equal to 0(FALSE) if the particle is outside
              * a sphere of radius R, 1(TRUE) if inside.
              *
-             * We intentionally use > rather than >= in the comparison so that spurious collisions are not detected
+             * We intentionally use < rather than <= in the comparison so that spurious collisions are not detected
              * when a particle is reset to the spherical boundary. A particle landing exactly on the spherical boundary
              * can be reflected in the next streaming step.
              * TODO: Verify if the comparison can impact the dynamics incorrectly since we aim to have a dynamic spherical confinement.
@@ -66,9 +66,9 @@ class __attribute__((visibility("default"))) SphereGeometry
             // (since no new collision could have occurred if there is no normal motion)
             /*
             r(t) = sqrt(x**2 + y**2 + z**2)
-            radial velocity, r_dot = (x*x_dot + y*y_dot + z*z_dot)/r(t)
+            radial velocity, r_dot = (x*vel_x + y*vel_y + z*vel_z)/r(t)
 
-            define variable vr = r_dot*r(t) to check for radial motion, for computational efficiency.
+            define variable vr = dot(pos,vel) to check for radial motion, for computational efficiency.
 
             To avoid division by zero error later on (line 103), we exit immediately. (no collision could have occurred
             if the particle speed is equal to zero)
@@ -93,17 +93,18 @@ class __attribute__((visibility("default"))) SphereGeometry
             * Assuming 'r*' is the point of contact on the spherical shell and dx* is the distance travelled by the
             * particle outside the boundary.
             *
-            * r* = r(t+del_t) + dx* * v(t)/|v|          (the -ve signs cancel out in the 2nd term)
+            * r* = r(t+del_t) - dx* * v(t)/|v|
             * and |r|**2 = R**2
             *
             * Solving the above equations,
-            * dx* = -r(t+del_t).v(t)/|v| +- sqrt((r(t+del_t).v(t))**2 - |r(t+del_t)|**2 + R**2)
+            * dx* = (r.v^) - sqrt((r.v^)**2 - r2 + R2)
             * consequently, dt = dx* / |v|
             */
 
-            Scalar r_dot_v_hat = vr/fast::sqrt(r2*v2);
+            Scalar mod_v = fast::sqrt(v2);
+            Scalar r_dot_v_hat = vr/mod_v;
 
-            const Scalar dx_ = -r_dot_v_hat + fast::sqrt(r_dot_v_hat*r_dot_v_hat - r2 + R*R);
+            const Scalar dx_ = r_dot_v_hat - fast::sqrt(r_dot_v_hat*r_dot_v_hat - r2 + R*R);
             dt = dx_/mod_v;
 
             // backtrack the particle for time dt to get to point of contact
@@ -124,6 +125,9 @@ class __attribute__((visibility("default"))) SphereGeometry
                 {
                 // tangential components of the velocity is unchanged.
                 // Radial component reflected since no penetration of the surface is necessary.
+                /*
+                 * v' = -v_perp + v_para = v - 2*v_perp
+                */
                 r2 = dot(pos,pos);
                 vr = dot(pos,vel);
                 vel.x -= 2.0*vr*pos.x/r2;
