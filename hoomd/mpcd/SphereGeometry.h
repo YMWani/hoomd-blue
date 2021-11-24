@@ -20,9 +20,12 @@ namespace mpcd
 {
 namespace detail
 {
-//! Spherical droplet geometry
+//! Sphere geometry
 /*!
- * TODO: write proper description of what is being done in the class below
+ * This models a fluid confined inside a sphere, centered at the origin and with radius R.
+ *
+ * If a particle leaves the sphere in a single simulation step, the particle is backtracked to the point on the
+ * surface from which it exited the surface and then reflected according to appropriate boundary condition.
  */
 class __attribute__((visibility("default"))) SphereGeometry
     {
@@ -52,74 +55,52 @@ class __attribute__((visibility("default"))) SphereGeometry
             {
 
             /*
-             * Detect if particle has left the spherical confinement.
-             * comparison: 'r2 <= R*R' used in the following calculations is equal to 0(FALSE) if the particle is outside
-             * a sphere of radius R, 1(TRUE) if inside.
+             * If particle is still inside the sphere or has zero speed, no collision could have occurred and therefore
+             * exit immediately.
              */
-            Scalar r2 = dot(pos,pos);
-            // exit immediately if no collision is found.
-            /*
-            To avoid division by zero error later on, we exit immediately. (no collision could have occurred
-            if the particle speed is equal to zero)
-            */
-            Scalar v2 = dot(vel,vel);
-            if (r2 <= R2 || v2 == Scalar(0))
+            const Scalar r2 = dot(pos,pos);
+            const Scalar v2 = dot(vel,vel);
+            if (r2 <= m_R2 || v2 == Scalar(0))
                {
                dt = Scalar(0);
                return false;
                }
 
-            // Find the point of contact when the particle is just leaving the surface
             /*
-            * Calculating the time spent outside-bounds requires the knowledge of the point of contact on the boundary.
-            * The point of contact can be calculated using geometrical considerations.
-            *
-            * We know the following quantities,
-            *    1. r(t+del_t)      (the point outside the sphere)
-            *    2. v(t)            (previous velocity)
-            *
-            * Assuming 'r*' is the point of contact on the spherical shell and dt is the time particle travelled
-            * outside the boundary.
-            *
-            * r* = r(t+del_t) - dx* * v(t)/|v|
-            * and |r*|**2 = R**2
-            *
-            * Solving the above equations,
-            * dx* = (r.v^) - sqrt((r.v^)**2 - r2 + R2)
-            * consequently, dt = dx* / |v|
-            *
-            * --> dt = ((r.v) - sqrt((r.v)**2 - v2*(r2-R2)))/v2
-            */
+             * Find the time remaining when the particle collided with the sphere of radius R. This time is
+             * found by backtracking the position, r* = r-dt*v, and solving for dt when dot(r*,r*) = R^2.
+             * This gives a quadratic equation in dt; the smaller root is the solution.
+             */
 
-            Scalar rv = dot(pos,vel);
-            dt = (rv - fast::sqrt(rv*rv-v2*(r2-R2)))/v2;
+            const Scalar rv = dot(pos,vel);
+            dt = (rv - fast::sqrt(rv*rv-v2*(r2-m_R2)))/v2;
 
             // backtrack the particle for time dt to get to point of contact
             pos -= vel*dt;
 
             // update velocity according to boundary conditions
             /*
-             * Let n^ be the normal unit vector ar the point of contact.
-             * Therefore,
-             * v_perp = (v.n^)n^        -->         ((r.v)/R2)r         [R2, since the particle is on the surface]
+             * Let n = r/R be the normal unit vector at the point of contact r (the particle position, which has been
+             * backtracked to the surface in the previous step).
+             * The perpendicular and parallel components of the velocity are:
+             * v_perp = (v.n)n = (v.r/R^2)r
              * v_para = v-v_perp
              */
             if (m_bc == boundary::no_slip)
                 {
-                /* no-slip requires reflection of the tangential components.
-                 * Radial component reflected since no penetration of the surface is necessary.
+                /* No-slip and no penetration requires reflection of both parallel and perpendicular components.
                  * This results in just flipping of all the velocity components.
                  */
                 vel = -vel;
                 }
             else if (m_bc == boundary::slip)
                 {
-                // tangential component of the velocity is unchanged.
-                // Radial component reflected since no penetration of the surface is necessary.
                 /*
+                 * Only no-penetration condition is enforced, so only v_perp is reflected.
+                 * The new velocity v' is:
                  * v' = -v_perp + v_para = v - 2*v_perp
                 */
-                const Scalar3 vperp = dot(vel,pos)*pos/R2;
+                const Scalar3 vperp = (dot(vel,pos)/m_R2)*pos;
                 vel -= Scalar(2)*vperp;
                 }
             return true;
@@ -132,7 +113,7 @@ class __attribute__((visibility("default"))) SphereGeometry
          */
         HOSTDEVICE bool isOutside(const Scalar3& pos) const
             {
-            return dot(pos,pos) > R2;
+            return dot(pos,pos) > m_R2;
             }
 
         //! Validate that the simulation box is large enough for the geometry
@@ -185,7 +166,8 @@ class __attribute__((visibility("default"))) SphereGeometry
         #endif // NVCC
 
     private:
-        const Scalar m_R;       //!< Spherical confinement radius
+        const Scalar m_R;       //!< Sphere radius
+        const Scalar m_R2;      //!< Square of sphere radius
         const boundary m_bc;    //!< Boundary condition
     };
 
