@@ -15,6 +15,7 @@
 #include "BulkGeometry.h"
 #include "SlitGeometry.h"
 #include "SlitPoreGeometry.h"
+#include "SphereGeometry.h"
 
 #ifndef NVCC
 #include "hoomd/extern/pybind/include/pybind11/pybind11.h"
