@@ -54,7 +54,7 @@ void export_SphereGeometry(pybind11::module& m)
     {
     namespace py = pybind11;
     py::class_<SphereGeometry, std::shared_ptr<SphereGeometry> >(m, "SphereGeometry")
-        .def(py::init<Scalar, Scalar, boundary>())
+        .def(py::init<Scalar, boundary>())
         .def("getR", &SphereGeometry::getR)
         .def("getBoundaryCondition", &SphereGeometry::getBoundaryCondition);
     }

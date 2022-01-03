@@ -129,8 +129,8 @@ class __attribute__((visibility("default"))) SphereGeometry
          */
         HOSTDEVICE bool validateBox(const BoxDim& box, Scalar cell_size) const
             {
-            const Scalar3 hi;
-            const Scalar3 lo;
+            Scalar3 hi;
+            Scalar3 lo;
             hi.x = box.getHi().x; hi.y = box.getHi().y; hi.z = box.getHi().z;
             lo.x = box.getLo().x; lo.y = box.getLo().y; lo.z = box.getLo().z;
 
