@@ -54,6 +54,7 @@ set(_mpcd_headers
     SystemData.h
     SystemDataSnapshot.h
     VirtualParticleFiller.h
+    SphereGeometry.h
     )
 
 if (ENABLE_CUDA)
