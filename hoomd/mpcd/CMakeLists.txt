@@ -48,13 +48,13 @@ set(_mpcd_headers
     SlitPoreGeometry.h
     SlitPoreGeometryFiller.h
     Sorter.h
+    SphereGeometry.h
     SRDCollisionMethod.h
     StreamingGeometry.h
     StreamingMethod.h
     SystemData.h
     SystemDataSnapshot.h
     VirtualParticleFiller.h
-    SphereGeometry.h
     )
 
 if (ENABLE_CUDA)
