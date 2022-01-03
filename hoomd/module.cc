@@ -40,10 +40,6 @@
 #include "Messenger.h"
 #include "SnapshotSystemData.h"
 
-#include "hoomd/mpcd/StreamingGeometry.h"       // contains the export_SphereGeometry function
-#include "hoomd/mpcd/ConfinedStreamingMethodGPU.h"
-#include "hoomd/mpcd/ConfinedStreamingMethod.h"
-
 // include GPU classes
 #ifdef ENABLE_CUDA
 #include <cuda.h>
@@ -399,9 +395,4 @@ PYBIND11_MODULE(_hoomd, m)
 
     // messenger
     export_Messenger(m);
-
-    // function calls for sphere geometry
-    export_SphereGeometry(m);
-    export_ConfinedStreamingMethodGPU(SphereGeometry);
-    export_ConfinedStreamingMethod(SphereGeometry);
     }
