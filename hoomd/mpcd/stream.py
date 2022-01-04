@@ -573,7 +573,7 @@ class sphere(_streaming_method):
 
     Args:
         R (float): confinement radius
-        boundary (str): boundary condition at wall ("slip" or "no_slip"")
+        boundary (str): boundary condition at wall ("slip" or "no_slip")
         period (int): Number of integration steps between collisions
 
     The sphere geometry models a fluid confined inside a sphere, centered at the
@@ -608,7 +608,7 @@ class sphere(_streaming_method):
                                  _mpcd.SphereGeometry(R,bc))
 
     def set_params(self, R=None, boundary=None):
-        """ Set parameters for the slit geometry.
+        """ Set parameters for the sphere geometry.
 
         Args:
             R (float): Sphere radius
