@@ -45,6 +45,8 @@ class mpcd_stream_sphere_test(unittest.TestCase):
         sphere.set_params(boundary="slip")
         self.assertEqual(sphere.boundary, "slip")
         self.assertEqual(sphere._cpp.geometry.getBoundaryCondition(), mpcd._mpcd.boundary.slip)
+        self.assertAlmostEqual(sphere.R, 2.)
+        self.assertAlmostEqual(sphere._cpp.geometry.getR(), 2.)
 
     # test for invalid boundary conditions being set
     def test_bad_boundary(self):
@@ -65,16 +67,25 @@ class mpcd_stream_sphere_test(unittest.TestCase):
         if hoomd.comm.get_rank() == 0:
             np.testing.assert_array_almost_equal(snap.particles.position[0], [[3.95,0.,0.]])
             np.testing.assert_array_almost_equal(snap.particles.velocity[0], [1.,0.,0.])
-            np.testing.assert_array_almost_equal(snap.particles.position[1], [0.,0.,0.])
+            np.testing.assert_array_almost_equal(snap.particles.position[1], [-0.1,-0.1,-0.1])
             np.testing.assert_array_almost_equal(snap.particles.velocity[1], [-1.,-1.,-1.])
 
-        # take another step where one particle will now hit the wall
+        # take another step where one particle will now reflect from the wall
         hoomd.run(1)
         snap = self.s.take_snapshot()
         if hoomd.comm.get_rank() == 0:
             np.testing.assert_array_almost_equal(snap.particles.position[0], [3.95,0.,0.])
-            np.testing.assert_array_almost_equal(snap.particles.velocity[0], [-1.,1.,-1.])
-            np.testing.assert_array_almost_equal(snap.particles.position[1], [0.,0.,0.])
+            np.testing.assert_array_almost_equal(snap.particles.velocity[0], [-1.,0.,0.])
+            np.testing.assert_array_almost_equal(snap.particles.position[1], [-0.2,-0.2,-0.2])
+            np.testing.assert_array_almost_equal(snap.particles.velocity[1], [-1.,-1.,-1.])
+
+        # take another step where both particles are streaming only
+        hoomd.run(1)
+        snap = self.s.take_snapshot()
+        if hoomd.comm.get_rank() == 0:
+            np.testing.assert_array_almost_equal(snap.particles.position[0], [3.85,0.,0.])
+            np.testing.assert_array_almost_equal(snap.particles.velocity[0], [-1.,0.,0.])
+            np.testing.assert_array_almost_equal(snap.particles.position[1], [-0.3,-0.3,-0.3])
             np.testing.assert_array_almost_equal(snap.particles.velocity[1], [-1.,-1.,-1.])
 
     # test basic stepping behaviour with slip boundary conditions
