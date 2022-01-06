@@ -65,7 +65,7 @@ class mpcd_stream_sphere_test(unittest.TestCase):
         hoomd.run(1)
         snap = self.s.take_snapshot()
         if hoomd.comm.get_rank() == 0:
-            np.testing.assert_array_almost_equal(snap.particles.position[0], [[3.95,0.,0.]])
+            np.testing.assert_array_almost_equal(snap.particles.position[0], [3.95,0.,0.])
             np.testing.assert_array_almost_equal(snap.particles.velocity[0], [1.,0.,0.])
             np.testing.assert_array_almost_equal(snap.particles.position[1], [-0.1,-0.1,-0.1])
             np.testing.assert_array_almost_equal(snap.particles.velocity[1], [-1.,-1.,-1.])
@@ -96,7 +96,7 @@ class mpcd_stream_sphere_test(unittest.TestCase):
         hoomd.run(1)
         snap = self.s.take_snapshot()
         if hoomd.comm.get_rank() == 0:
-            np.testing.assert_array_almost_equal(snap.particles.position[0], [[3.95, 0., 0.]])
+            np.testing.assert_array_almost_equal(snap.particles.position[0], [3.95, 0., 0.])
             np.testing.assert_array_almost_equal(snap.particles.velocity[0], [1., 0., 0.])
             np.testing.assert_array_almost_equal(snap.particles.position[1], [-0.1,-0.1,-0.1])
             np.testing.assert_array_almost_equal(snap.particles.velocity[1], [-1., -1., -1.])
@@ -141,7 +141,7 @@ class mpcd_stream_sphere_test(unittest.TestCase):
         with self.assertRaises(RuntimeError):
             hoomd.run(1)
 
-        sphere.set_params(H=3.95)
+        sphere.set_params(R=3.95)
         hoomd.run(1)
 
     def tearDown(self):
