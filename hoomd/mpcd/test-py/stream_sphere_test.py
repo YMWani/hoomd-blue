@@ -16,19 +16,19 @@ class mpcd_stream_sphere_test(unittest.TestCase):
 
         # initialize the system from the starting snapshot
         snap = mpcd.data.make_snapshot(N=4)
-        """
-        particle 1: Hits the wall in the second streaming step, gets reflected accordingly
-        particle 2: Always inside the sphere, so no reflection by the BC
-        particle 3: Hits the wall normally and gets reflected back.
-        particle 4: Lands almost exactly on the sphere surface and needs to be backtracked one complete step
-        """
+
+        # particle 1: Hits the wall in the second streaming step, gets reflected accordingly
+        # particle 2: Always inside the sphere, so no reflection by the BC
+        # particle 3: Hits the wall normally and gets reflected back.
+        # particle 4: Lands almost exactly on the sphere surface and needs to be backtracked one complete step
+
         snap.particles.position[:] = [[2.85,0.895,np.sqrt(6)+0.075],
                                       [0.,0.,0.],
                                       list(0.965*np.array([-1.,-2.,np.sqrt(11)])),
                                       [1.92,-1.96,-np.sqrt(8)+0.05]]
         snap.particles.velocity[:] = [[1.,0.7,-0.5],
                                       [-1.,-1.,-1.],
-                                      list(1./4.*np.array([-1.,-2.,np.sqrt(11)])),
+                                      list(0.25*np.array([-1.,-2.,np.sqrt(11)])),
                                       [0.8,-0.4,-0.5]]
         self.s = mpcd.init.read_snapshot(snap)
 
@@ -82,7 +82,7 @@ class mpcd_stream_sphere_test(unittest.TestCase):
             np.testing.assert_array_almost_equal(snap.particles.position[1], [-0.1,-0.1,-0.1])
             np.testing.assert_array_almost_equal(snap.particles.velocity[1], [-1.,-1.,-1.])
             np.testing.assert_array_almost_equal(snap.particles.position[2], 0.99*np.array([-1.,-2.,np.sqrt(11)]))
-            np.testing.assert_array_almost_equal(snap.particles.velocity[2], 1./4.*np.array([-1.,-2.,np.sqrt(11)]))
+            np.testing.assert_array_almost_equal(snap.particles.velocity[2], 0.25*np.array([-1.,-2.,np.sqrt(11)]))
             np.testing.assert_array_almost_equal(snap.particles.position[3], [2.,-2.,-np.sqrt(8)])
             np.testing.assert_array_almost_equal(snap.particles.velocity[3], [0.8,-0.4,-0.5])
 
@@ -95,7 +95,7 @@ class mpcd_stream_sphere_test(unittest.TestCase):
             np.testing.assert_array_almost_equal(snap.particles.position[1], [-0.2,-0.2,-0.2])
             np.testing.assert_array_almost_equal(snap.particles.velocity[1], [-1.,-1.,-1.])
             np.testing.assert_array_almost_equal(snap.particles.position[2], 0.985*np.array([-1.,-2.,np.sqrt(11)]))
-            np.testing.assert_array_almost_equal(snap.particles.velocity[2], -1./4.*np.array([-1.,-2.,np.sqrt(11)]))
+            np.testing.assert_array_almost_equal(snap.particles.velocity[2], -0.25*np.array([-1.,-2.,np.sqrt(11)]))
             np.testing.assert_array_almost_equal(snap.particles.position[3], [1.92,-1.96,-np.sqrt(8)+0.05])
             np.testing.assert_array_almost_equal(snap.particles.velocity[3], [-0.8,0.4,0.5])
 
@@ -108,7 +108,7 @@ class mpcd_stream_sphere_test(unittest.TestCase):
             np.testing.assert_array_almost_equal(snap.particles.position[1], [-0.3,-0.3,-0.3])
             np.testing.assert_array_almost_equal(snap.particles.velocity[1], [-1.,-1.,-1.])
             np.testing.assert_array_almost_equal(snap.particles.position[2], 0.96*np.array([-1.,-2.,np.sqrt(11)]))
-            np.testing.assert_array_almost_equal(snap.particles.velocity[2], -1./4.*np.array([-1.,-2.,np.sqrt(11)]))
+            np.testing.assert_array_almost_equal(snap.particles.velocity[2], -0.25*np.array([-1.,-2.,np.sqrt(11)]))
             np.testing.assert_array_almost_equal(snap.particles.position[3], [1.84,-1.92,-np.sqrt(8)+0.1])
             np.testing.assert_array_almost_equal(snap.particles.velocity[3], [-0.8,0.4,0.5])
 
@@ -125,7 +125,7 @@ class mpcd_stream_sphere_test(unittest.TestCase):
             np.testing.assert_array_almost_equal(snap.particles.position[1], [-0.1,-0.1,-0.1])
             np.testing.assert_array_almost_equal(snap.particles.velocity[1], [-1., -1., -1.])
             np.testing.assert_array_almost_equal(snap.particles.position[2], 0.99*np.array([-1.,-2.,np.sqrt(11)]))
-            np.testing.assert_array_almost_equal(snap.particles.velocity[2], 1./4.*np.array([-1.,-2.,np.sqrt(11)]))
+            np.testing.assert_array_almost_equal(snap.particles.velocity[2], 0.25*np.array([-1.,-2.,np.sqrt(11)]))
             np.testing.assert_array_almost_equal(snap.particles.position[3], [2.,-2.,-np.sqrt(8)])
             np.testing.assert_array_almost_equal(snap.particles.velocity[3], [0.8,-0.4,-0.5])
 
@@ -133,37 +133,42 @@ class mpcd_stream_sphere_test(unittest.TestCase):
         hoomd.run(1)
         snap = self.s.take_snapshot()
         if hoomd.comm.get_rank() == 0:
-            r1 = np.array([3.,1.,np.sqrt(6)])       # point of contact
-            v1 = np.array([1.,0.7,-0.5])            # velocity before reflection
-            v_ = v1 - 1/8.*np.dot(v1,r1)*r1         # velocity after reflection
-            r_ = r1+v_*0.05                         # position after reflection
-            np.testing.assert_array_almost_equal(snap.particles.position[0], r_)
-            np.testing.assert_array_almost_equal(snap.particles.velocity[0], v_)
+            # point of contact
+            r1_before = np.array([3.,1.,np.sqrt(6)])
+            # velocity before reflection
+            v1_before = np.array([1.,0.7,-0.5])
+            # velocity after reflection
+            v1_after = v1_before - 1/8.*np.dot(v1_before,r1_before)*r1_before
+            # position after reflection
+            r1_after = r1_before+v1_after*0.05
+            np.testing.assert_array_almost_equal(snap.particles.position[0], r1_after)
+            np.testing.assert_array_almost_equal(snap.particles.velocity[0], v1_after)
             np.testing.assert_array_almost_equal(snap.particles.position[1], [-0.2,-0.2,-0.2])
             np.testing.assert_array_almost_equal(snap.particles.velocity[1], [-1., -1., -1.])
             np.testing.assert_array_almost_equal(snap.particles.position[2], 0.985*np.array([-1.,-2.,np.sqrt(11)]))
-            np.testing.assert_array_almost_equal(snap.particles.velocity[2], -1./4.*np.array([-1.,-2.,np.sqrt(11)]))
-            r2 = np.array([2.,-2.,-np.sqrt(8)])
-            v2 = np.array([0.8,-0.4,-0.5])
-            v__ = v2 - 1./8.*np.dot(v2,r2)*r2
-            r__ = r2+v__*0.1
-            np.testing.assert_array_almost_equal(snap.particles.position[3], r__)
-            np.testing.assert_array_almost_equal(snap.particles.velocity[3], v__)
+            np.testing.assert_array_almost_equal(snap.particles.velocity[2], -0.25*np.array([-1.,-2.,np.sqrt(11)]))
+            r2_before = np.array([2.,-2.,-np.sqrt(8)])
+            v2_before = np.array([0.8,-0.4,-0.5])
+            v2_after = v2_before - 1./8.*np.dot(v2_before,r2_before)*r2_before
+            r2_after = r2_before+v2_after*0.1
+            np.testing.assert_array_almost_equal(snap.particles.position[3], r2_after)
+            np.testing.assert_array_almost_equal(snap.particles.velocity[3], v2_after)
 
         # take another step where both particles are streaming only
         hoomd.run(1)
         snap = self.s.take_snapshot()
         if hoomd.comm.get_rank() == 0:
-            r_ += v_*0.1                            # one step streaming
-            np.testing.assert_array_almost_equal(snap.particles.position[0], r_)
-            np.testing.assert_array_almost_equal(snap.particles.velocity[0], v_)
+            # one step streaming
+            r1_after += v1_after*0.1
+            np.testing.assert_array_almost_equal(snap.particles.position[0], r1_after)
+            np.testing.assert_array_almost_equal(snap.particles.velocity[0], v1_after)
             np.testing.assert_array_almost_equal(snap.particles.position[1], [-0.3,-0.3,-0.3])
             np.testing.assert_array_almost_equal(snap.particles.velocity[1], [-1.,-1.,-1.])
             np.testing.assert_array_almost_equal(snap.particles.position[2], 0.96*np.array([-1.,-2.,np.sqrt(11)]))
-            np.testing.assert_array_almost_equal(snap.particles.velocity[2], -1./4.*np.array([-1.,-2.,np.sqrt(11)]))
-            r__ += v__*0.1
-            np.testing.assert_array_almost_equal(snap.particles.position[3], r__)
-            np.testing.assert_array_almost_equal(snap.particles.velocity[3], v__)
+            np.testing.assert_array_almost_equal(snap.particles.velocity[2], -0.25*np.array([-1.,-2.,np.sqrt(11)]))
+            r2_after += v2_after*0.1
+            np.testing.assert_array_almost_equal(snap.particles.position[3], r2_after)
+            np.testing.assert_array_almost_equal(snap.particles.velocity[3], v2_after)
 
     # test that setting the sphere size too large raises an error
     def test_validate_box(self):
